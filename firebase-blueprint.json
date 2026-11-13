@@ -1,0 +1,181 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Player profile, avatar loadout, and match statistics for Redline hide-and-seek.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated Firebase UID of the player." },
+        "displayName": { "type": "string", "description": "Player callsign shown in lobbies and live maps." },
+        "avatarColorHex": { "type": "string", "description": "Hex accent color chosen by the player." },
+        "avatarModel": { "type": "string", "enum": ["striker", "phantom", "vanguard", "cipher"], "description": "Character body model." },
+        "avatarHat": { "type": "string", "enum": ["none", "cap", "beanie", "tactical_hood", "visor_helm"], "description": "Equipped hat item." },
+        "avatarShirt": { "type": "string", "enum": ["crimson_tee", "obsidian_hoodie", "scarlet_jacket", "stealth_vest"], "description": "Equipped shirt item." },
+        "avatarPants": { "type": "string", "enum": ["charcoal_joggers", "tactical_cargos", "crimson_track", "obsidian_slim"], "description": "Equipped pants item." },
+        "avatarAccessory": { "type": "string", "enum": ["none", "red_visor", "comms_headset", "scarf", "radar_pack"], "description": "Equipped accessory item." },
+        "gamesPlayed": { "type": "integer", "description": "Total completed matches." },
+        "gamesWon": { "type": "integer", "description": "Total matches won." },
+        "hidersTagged": { "type": "integer", "description": "Total hiders tagged as seeker." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update server timestamp." }
+      },
+      "required": [
+        "userId", "displayName", "avatarColorHex",
+        "avatarModel", "avatarHat", "avatarShirt", "avatarPants", "avatarAccessory",
+        "gamesPlayed", "gamesWon", "hidersTagged", "createdAt", "updatedAt"
+      ]
+    },
+    "GameLobby": {
+      "title": "GameLobby",
+      "description": "Private hide-and-seek room identified by a custom 6-character lobby code.",
+      "type": "object",
+      "properties": {
+        "hostId": { "type": "string", "description": "UID of the lobby creator and host." },
+        "code": { "type": "string", "description": "Private 6-character lobby access code." },
+        "title": { "type": "string", "description": "Custom room title." },
+        "status": { "type": "string", "enum": ["waiting", "hiding", "hunting", "finished"], "description": "Current match lifecycle phase." },
+        "maxPlayers": { "type": "integer", "description": "Maximum players allowed (2 to 20)." },
+        "hideDurationSec": { "type": "integer", "description": "Seeker wait duration in seconds (30 to 120)." },
+        "huntDurationSec": { "type": "integer", "description": "Total hunt time limit in seconds." },
+        "initialZoneRadiusMeters": { "type": "number", "description": "Starting safe zone radius in meters." },
+        "finalZoneRadiusMeters": { "type": "number", "description": "Final shrunk safe zone radius in meters." },
+        "zoneCenterLat": { "type": "number", "description": "Latitude of the safe zone center." },
+        "zoneCenterLng": { "type": "number", "description": "Longitude of the safe zone center." },
+        "seekerUid": { "type": "string", "description": "UID of the assigned seeker." },
+        "winnerTeam": { "type": "string", "enum": ["", "seekers", "hiders"], "description": "Winning team once the match finishes." },
+        "phaseStartedAtMs": { "type": "integer", "description": "Epoch milliseconds when the current phase started." },
+        "memberUids": { "type": "array", "description": "Bounded list of up to 20 member UIDs currently in the lobby." },
+        "voiceEnabled": { "type": "boolean", "description": "Whether proximity voice chat is enabled in this lobby." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update server timestamp." }
+      },
+      "required": [
+        "hostId", "code", "title", "status", "maxPlayers",
+        "hideDurationSec", "huntDurationSec",
+        "initialZoneRadiusMeters", "finalZoneRadiusMeters",
+        "zoneCenterLat", "zoneCenterLng", "seekerUid",
+        "winnerTeam", "phaseStartedAtMs", "memberUids",
+        "voiceEnabled", "createdAt", "updatedAt"
+      ]
+    },
+    "LobbyPlayer": {
+      "title": "LobbyPlayer",
+      "description": "Live state, avatar loadout, ability cooldowns, and coordinates for a player or spectator in a lobby.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Player UID matching document ID." },
+        "lobbyId": { "type": "string", "description": "Parent lobby code." },
+        "displayName": { "type": "string", "description": "Player callsign." },
+        "avatarColorHex": { "type": "string", "description": "Avatar accent hex." },
+        "avatarModel": { "type": "string", "enum": ["striker", "phantom", "vanguard", "cipher"], "description": "Character model." },
+        "avatarHat": { "type": "string", "enum": ["none", "cap", "beanie", "tactical_hood", "visor_helm"], "description": "Hat item." },
+        "avatarShirt": { "type": "string", "enum": ["crimson_tee", "obsidian_hoodie", "scarlet_jacket", "stealth_vest"], "description": "Shirt item." },
+        "avatarPants": { "type": "string", "enum": ["charcoal_joggers", "tactical_cargos", "crimson_track", "obsidian_slim"], "description": "Pants item." },
+        "avatarAccessory": { "type": "string", "enum": ["none", "red_visor", "comms_headset", "scarf", "radar_pack"], "description": "Accessory item." },
+        "role": { "type": "string", "enum": ["hider", "seeker", "spectator"], "description": "Assigned role in the match." },
+        "status": { "type": "string", "enum": ["ready", "active", "caught", "spectating"], "description": "Current player match status." },
+        "lat": { "type": "number", "description": "Latest latitude." },
+        "lng": { "type": "number", "description": "Latest longitude." },
+        "isMicMuted": { "type": "boolean", "description": "Whether proximity microphone is muted." },
+        "isSpeaking": { "type": "boolean", "description": "Whether proximity microphone is currently transmitting." },
+        "cloakedUntilMs": { "type": "integer", "description": "Epoch ms until Ghost Veil invisibility expires." },
+        "speedBoostUntilMs": { "type": "integer", "description": "Epoch ms until Adrenaline Surge speed boost expires." },
+        "lastSonarAtMs": { "type": "integer", "description": "Epoch ms when Seeker last triggered Sonar Pulse." },
+        "lastRevealAtMs": { "type": "integer", "description": "Epoch ms when Seeker last triggered Thermal Reveal." },
+        "lastCloakAtMs": { "type": "integer", "description": "Epoch ms when Hider last triggered Ghost Veil." },
+        "lastSpeedAtMs": { "type": "integer", "description": "Epoch ms when Hider last triggered Adrenaline Surge." },
+        "lastDecoyAtMs": { "type": "integer", "description": "Epoch ms when Hider last deployed Phantom Decoy." },
+        "bonusCharges": { "type": "integer", "description": "Extra power-up charges collected from arena drops." },
+        "joinedAtMs": { "type": "integer", "description": "Epoch milliseconds when player joined." },
+        "caughtAtMs": { "type": "integer", "description": "Epoch milliseconds when tagged into spectator mode (0 if active)." },
+        "caughtByUid": { "type": "string", "description": "UID of seeker who tagged this player." },
+        "memberUids": { "type": "array", "description": "Denormalized member UIDs from parent lobby for flat list rules." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update server timestamp." }
+      },
+      "required": [
+        "userId", "lobbyId", "displayName",
+        "avatarColorHex", "avatarModel", "avatarHat", "avatarShirt", "avatarPants", "avatarAccessory",
+        "role", "status", "lat", "lng", "isMicMuted", "isSpeaking",
+        "cloakedUntilMs", "speedBoostUntilMs",
+        "lastSonarAtMs", "lastRevealAtMs", "lastCloakAtMs", "lastSpeedAtMs", "lastDecoyAtMs",
+        "bonusCharges", "joinedAtMs", "caughtAtMs", "caughtByUid",
+        "memberUids", "createdAt", "updatedAt"
+      ]
+    },
+    "ArenaPowerUp": {
+      "title": "ArenaPowerUp",
+      "description": "Collectible tactical power-up drop spawned inside the arena.",
+      "type": "object",
+      "properties": {
+        "lobbyId": { "type": "string" },
+        "type": { "type": "string", "enum": ["cloak", "sprint", "decoy", "sonar_charge"] },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "spawnedAtMs": { "type": "integer" },
+        "claimedByUid": { "type": "string" },
+        "claimedAtMs": { "type": "integer" },
+        "memberUids": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["lobbyId", "type", "lat", "lng", "spawnedAtMs", "claimedByUid", "claimedAtMs", "memberUids", "createdAt"]
+    },
+    "DecoyBeacon": {
+      "title": "DecoyBeacon",
+      "description": "Temporary phantom radar decoy placed by an active hider.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string" },
+        "lobbyId": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "expiresAtMs": { "type": "integer" },
+        "memberUids": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "lobbyId", "lat", "lng", "expiresAtMs", "memberUids", "createdAt"]
+    },
+    "VoicePacket": {
+      "title": "VoicePacket",
+      "description": "Short compressed proximity audio frame sent by active non-spectator players.",
+      "type": "object",
+      "properties": {
+        "senderUid": { "type": "string" },
+        "lobbyId": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "audioBase64": { "type": "string" },
+        "sentAtMs": { "type": "integer" },
+        "memberUids": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderUid", "lobbyId", "lat", "lng", "audioBase64", "sentAtMs", "memberUids", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Per-user Redline profile, avatar loadout, and statistics."
+    },
+    "/lobbies/{lobbyId}": {
+      "schema": { "$ref": "#/entities/GameLobby" },
+      "description": "Private multiplayer hide-and-seek lobbies keyed by custom lobby code."
+    },
+    "/lobbies/{lobbyId}/players/{playerId}": {
+      "schema": { "$ref": "#/entities/LobbyPlayer" },
+      "description": "Live player locations, avatar loadouts, roles, ability states, and spectator states inside a lobby."
+    },
+    "/lobbies/{lobbyId}/powerUps/{powerUpId}": {
+      "schema": { "$ref": "#/entities/ArenaPowerUp" },
+      "description": "Collectible arena power-up drops."
+    },
+    "/lobbies/{lobbyId}/decoys/{decoyId}": {
+      "schema": { "$ref": "#/entities/DecoyBeacon" },
+      "description": "Phantom decoy beacons deployed by active hiders."
+    },
+    "/lobbies/{lobbyId}/voicePackets/{packetId}": {
+      "schema": { "$ref": "#/entities/VoicePacket" },
+      "description": "Ephemeral proximity voice audio frames inside a lobby."
+    }
+  }
+}

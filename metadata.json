@@ -1,0 +1,8 @@
+{
+  "name": "Remix SeekZone",
+  "description": "Intense multiplayer hide-and-seek with shrinking zones, proximity voice chat, and minimalist red-themed aesthetics for mobile.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

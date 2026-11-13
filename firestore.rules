@@ -1,0 +1,586 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidAvatarFields(data) {
+      return data.avatarColorHex is string &&
+             data.avatarColorHex.size() >= 4 &&
+             data.avatarColorHex.size() <= 10 &&
+             data.avatarModel in ['striker', 'phantom', 'vanguard', 'cipher'] &&
+             data.avatarHat in ['none', 'cap', 'beanie', 'tactical_hood', 'visor_helm'] &&
+             data.avatarShirt in ['crimson_tee', 'obsidian_hoodie', 'scarlet_jacket', 'stealth_vest'] &&
+             data.avatarPants in ['charcoal_joggers', 'tactical_cargos', 'crimson_track', 'obsidian_slim'] &&
+             data.avatarAccessory in ['none', 'red_visor', 'comms_headset', 'scarf', 'radar_pack'];
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string &&
+             data.userId.size() >= 1 &&
+             data.userId.size() <= 128 &&
+             data.displayName is string &&
+             data.displayName.size() >= 1 &&
+             data.displayName.size() <= 30 &&
+             isValidAvatarFields(data) &&
+             data.gamesPlayed is int &&
+             data.gamesPlayed >= 0 &&
+             data.gamesWon is int &&
+             data.gamesWon >= 0 &&
+             data.hidersTagged is int &&
+             data.hidersTagged >= 0 &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    function isValidLobby(data) {
+      return data.hostId is string &&
+             data.hostId.size() >= 1 &&
+             data.hostId.size() <= 128 &&
+             data.code is string &&
+             data.code.size() >= 4 &&
+             data.code.size() <= 12 &&
+             data.code.matches('^[A-Z0-9]+$') &&
+             data.title is string &&
+             data.title.size() >= 2 &&
+             data.title.size() <= 40 &&
+             data.status in ['waiting', 'hiding', 'hunting', 'finished'] &&
+             data.maxPlayers is int &&
+             data.maxPlayers >= 2 &&
+             data.maxPlayers <= 20 &&
+             data.hideDurationSec is int &&
+             data.hideDurationSec >= 30 &&
+             data.hideDurationSec <= 120 &&
+             data.huntDurationSec is int &&
+             data.huntDurationSec >= 120 &&
+             data.huntDurationSec <= 1800 &&
+             (data.initialZoneRadiusMeters is int || data.initialZoneRadiusMeters is float) &&
+             data.initialZoneRadiusMeters >= 50.0 &&
+             data.initialZoneRadiusMeters <= 2000.0 &&
+             (data.finalZoneRadiusMeters is int || data.finalZoneRadiusMeters is float) &&
+             data.finalZoneRadiusMeters >= 10.0 &&
+             data.finalZoneRadiusMeters <= 200.0 &&
+             data.finalZoneRadiusMeters <= data.initialZoneRadiusMeters &&
+             (data.zoneCenterLat is int || data.zoneCenterLat is float) &&
+             data.zoneCenterLat >= -90.0 &&
+             data.zoneCenterLat <= 90.0 &&
+             (data.zoneCenterLng is int || data.zoneCenterLng is float) &&
+             data.zoneCenterLng >= -180.0 &&
+             data.zoneCenterLng <= 180.0 &&
+             data.seekerUid is string &&
+             data.seekerUid.size() <= 128 &&
+             data.winnerTeam in ['', 'seekers', 'hiders'] &&
+             data.phaseStartedAtMs is int &&
+             data.phaseStartedAtMs >= 0 &&
+             data.memberUids is list &&
+             data.memberUids.size() >= 1 &&
+             data.memberUids.size() <= 20 &&
+             data.memberUids[0] is string &&
+             data.voiceEnabled is bool &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    function isValidPlayer(data) {
+      return data.userId is string &&
+             data.userId.size() >= 1 &&
+             data.userId.size() <= 128 &&
+             data.lobbyId is string &&
+             data.lobbyId.size() >= 4 &&
+             data.lobbyId.size() <= 12 &&
+             data.displayName is string &&
+             data.displayName.size() >= 1 &&
+             data.displayName.size() <= 30 &&
+             isValidAvatarFields(data) &&
+             data.role in ['hider', 'seeker', 'spectator'] &&
+             data.status in ['ready', 'active', 'caught', 'spectating'] &&
+             (data.lat is int || data.lat is float) &&
+             data.lat >= -90.0 &&
+             data.lat <= 90.0 &&
+             (data.lng is int || data.lng is float) &&
+             data.lng >= -180.0 &&
+             data.lng <= 180.0 &&
+             data.isMicMuted is bool &&
+             data.isSpeaking is bool &&
+             data.cloakedUntilMs is int &&
+             data.cloakedUntilMs >= 0 &&
+             data.speedBoostUntilMs is int &&
+             data.speedBoostUntilMs >= 0 &&
+             data.lastSonarAtMs is int &&
+             data.lastSonarAtMs >= 0 &&
+             data.lastRevealAtMs is int &&
+             data.lastRevealAtMs >= 0 &&
+             data.lastCloakAtMs is int &&
+             data.lastCloakAtMs >= 0 &&
+             data.lastSpeedAtMs is int &&
+             data.lastSpeedAtMs >= 0 &&
+             data.lastDecoyAtMs is int &&
+             data.lastDecoyAtMs >= 0 &&
+             data.bonusCharges is int &&
+             data.bonusCharges >= 0 &&
+             data.bonusCharges <= 10 &&
+             data.joinedAtMs is int &&
+             data.joinedAtMs >= 0 &&
+             data.caughtAtMs is int &&
+             data.caughtAtMs >= 0 &&
+             data.caughtByUid is string &&
+             data.caughtByUid.size() <= 128 &&
+             data.memberUids is list &&
+             data.memberUids.size() >= 1 &&
+             data.memberUids.size() <= 20 &&
+             data.memberUids[0] is string &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    function isValidPowerUp(data) {
+      return data.lobbyId is string &&
+             data.lobbyId.size() >= 4 &&
+             data.lobbyId.size() <= 12 &&
+             data.type in ['cloak', 'sprint', 'decoy', 'sonar_charge'] &&
+             (data.lat is int || data.lat is float) &&
+             data.lat >= -90.0 &&
+             data.lat <= 90.0 &&
+             (data.lng is int || data.lng is float) &&
+             data.lng >= -180.0 &&
+             data.lng <= 180.0 &&
+             data.spawnedAtMs is int &&
+             data.spawnedAtMs > 0 &&
+             data.claimedByUid is string &&
+             data.claimedByUid.size() <= 128 &&
+             data.claimedAtMs is int &&
+             data.claimedAtMs >= 0 &&
+             data.memberUids is list &&
+             data.memberUids.size() >= 1 &&
+             data.memberUids.size() <= 20 &&
+             data.memberUids[0] is string &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time;
+    }
+
+    function isValidDecoy(data) {
+      return data.ownerUid is string &&
+             data.ownerUid.size() >= 1 &&
+             data.ownerUid.size() <= 128 &&
+             data.lobbyId is string &&
+             data.lobbyId.size() >= 4 &&
+             data.lobbyId.size() <= 12 &&
+             (data.lat is int || data.lat is float) &&
+             data.lat >= -90.0 &&
+             data.lat <= 90.0 &&
+             (data.lng is int || data.lng is float) &&
+             data.lng >= -180.0 &&
+             data.lng <= 180.0 &&
+             data.expiresAtMs is int &&
+             data.expiresAtMs > 0 &&
+             data.memberUids is list &&
+             data.memberUids.size() >= 1 &&
+             data.memberUids.size() <= 20 &&
+             data.memberUids[0] is string &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time;
+    }
+
+    function isValidVoicePacket(data) {
+      return data.senderUid is string &&
+             data.senderUid.size() >= 1 &&
+             data.senderUid.size() <= 128 &&
+             data.lobbyId is string &&
+             data.lobbyId.size() >= 4 &&
+             data.lobbyId.size() <= 12 &&
+             (data.lat is int || data.lat is float) &&
+             data.lat >= -90.0 &&
+             data.lat <= 90.0 &&
+             (data.lng is int || data.lng is float) &&
+             data.lng >= -180.0 &&
+             data.lng <= 180.0 &&
+             data.audioBase64 is string &&
+             data.audioBase64.size() >= 1 &&
+             data.audioBase64.size() <= 24000 &&
+             data.sentAtMs is int &&
+             data.sentAtMs > 0 &&
+             data.memberUids is list &&
+             data.memberUids.size() >= 1 &&
+             data.memberUids.size() <= 20 &&
+             data.memberUids[0] is string &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time;
+    }
+
+    function isCallerActivePlayer(lobbyId) {
+      return get(/databases/$(database)/documents/lobbies/$(lobbyId)/players/$(request.auth.uid)).data.status != 'spectating' &&
+             get(/databases/$(database)/documents/lobbies/$(lobbyId)/players/$(request.auth.uid)).data.role != 'spectator';
+    }
+
+    match /users/{userId} {
+      allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'userId', 'displayName', 'avatarColorHex',
+                         'avatarModel', 'avatarHat', 'avatarShirt', 'avatarPants', 'avatarAccessory',
+                         'gamesPlayed', 'gamesWon', 'hidersTagged',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'displayName', 'avatarColorHex',
+                         'avatarModel', 'avatarHat', 'avatarShirt', 'avatarPants', 'avatarAccessory',
+                         'gamesPlayed', 'gamesWon', 'hidersTagged',
+                         'createdAt', 'updatedAt'
+                       ]);
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'displayName', 'avatarColorHex',
+                         'avatarModel', 'avatarHat', 'avatarShirt', 'avatarPants', 'avatarAccessory',
+                         'gamesPlayed', 'gamesWon', 'hidersTagged',
+                         'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+    }
+
+    match /lobbies/{lobbyId} {
+      allow get: if isSignedIn() && isValidId(lobbyId);
+      allow list: if isSignedIn() && request.auth.uid in existing().memberUids;
+
+      allow create: if isSignedIn() &&
+                       isValidId(lobbyId) &&
+                       isValidLobby(incoming()) &&
+                       incoming().code == lobbyId &&
+                       incoming().hostId == request.auth.uid &&
+                       incoming().status == 'waiting' &&
+                       incoming().winnerTeam == '' &&
+                       incoming().memberUids.size() == 1 &&
+                       incoming().memberUids[0] == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'hostId', 'code', 'title', 'status', 'maxPlayers',
+                         'hideDurationSec', 'huntDurationSec',
+                         'initialZoneRadiusMeters', 'finalZoneRadiusMeters',
+                         'zoneCenterLat', 'zoneCenterLng', 'seekerUid',
+                         'winnerTeam', 'phaseStartedAtMs', 'memberUids',
+                         'voiceEnabled', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'hostId', 'code', 'title', 'status', 'maxPlayers',
+                         'hideDurationSec', 'huntDurationSec',
+                         'initialZoneRadiusMeters', 'finalZoneRadiusMeters',
+                         'zoneCenterLat', 'zoneCenterLng', 'seekerUid',
+                         'winnerTeam', 'phaseStartedAtMs', 'memberUids',
+                         'voiceEnabled', 'createdAt', 'updatedAt'
+                       ]);
+
+      allow update: if isSignedIn() &&
+                       isValidId(lobbyId) &&
+                       isValidLobby(incoming()) &&
+                       incoming().hostId == existing().hostId &&
+                       incoming().code == existing().code &&
+                       incoming().createdAt == existing().createdAt &&
+                       existing().status != 'finished' && (
+                         (
+                           existing().status == 'waiting' &&
+                           !(request.auth.uid in existing().memberUids) &&
+                           existing().memberUids.size() < existing().maxPlayers &&
+                           incoming().memberUids.size() == existing().memberUids.size() + 1 &&
+                           request.auth.uid in incoming().memberUids &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                         ) ||
+                         (
+                           request.auth.uid in existing().memberUids &&
+                           request.auth.uid != existing().hostId &&
+                           !(request.auth.uid in incoming().memberUids) &&
+                           incoming().memberUids.size() == existing().memberUids.size() - 1 &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                         ) ||
+                         (
+                           request.auth.uid == existing().hostId &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'title', 'status', 'maxPlayers',
+                             'hideDurationSec', 'huntDurationSec',
+                             'initialZoneRadiusMeters', 'finalZoneRadiusMeters',
+                             'zoneCenterLat', 'zoneCenterLng', 'seekerUid',
+                             'winnerTeam', 'phaseStartedAtMs', 'voiceEnabled', 'updatedAt'
+                           ])
+                         ) ||
+                         (
+                           request.auth.uid == existing().seekerUid &&
+                           (existing().status == 'hiding' || existing().status == 'hunting') &&
+                           incoming().status in ['hunting', 'finished'] &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'status', 'winnerTeam', 'phaseStartedAtMs', 'updatedAt'
+                           ])
+                         )
+                       );
+
+      allow delete: if isSignedIn() && isValidId(lobbyId) && existing().hostId == request.auth.uid;
+
+      match /players/{playerId} {
+        allow get: if isSignedIn() &&
+                      isValidId(lobbyId) &&
+                      isValidId(playerId) &&
+                      (request.auth.uid == playerId || request.auth.uid in existing().memberUids);
+
+        allow list: if isSignedIn() && request.auth.uid in existing().memberUids;
+
+        allow create: if isSignedIn() &&
+                         isValidId(lobbyId) &&
+                         isValidId(playerId) &&
+                         isValidPlayer(incoming()) &&
+                         request.auth.uid == playerId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().lobbyId == lobbyId &&
+                         incoming().role == 'hider' &&
+                         incoming().status == 'ready' &&
+                         incoming().caughtAtMs == 0 &&
+                         incoming().caughtByUid == '' &&
+                         request.auth.uid in incoming().memberUids &&
+                         incoming().keys().hasAll([
+                           'userId', 'lobbyId', 'displayName',
+                           'avatarColorHex', 'avatarModel', 'avatarHat', 'avatarShirt', 'avatarPants', 'avatarAccessory',
+                           'role', 'status', 'lat', 'lng', 'isMicMuted', 'isSpeaking',
+                           'cloakedUntilMs', 'speedBoostUntilMs',
+                           'lastSonarAtMs', 'lastRevealAtMs', 'lastCloakAtMs',
+                           'lastSpeedAtMs', 'lastDecoyAtMs', 'bonusCharges',
+                           'joinedAtMs', 'caughtAtMs', 'caughtByUid',
+                           'memberUids', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'lobbyId', 'displayName',
+                           'avatarColorHex', 'avatarModel', 'avatarHat', 'avatarShirt', 'avatarPants', 'avatarAccessory',
+                           'role', 'status', 'lat', 'lng', 'isMicMuted', 'isSpeaking',
+                           'cloakedUntilMs', 'speedBoostUntilMs',
+                           'lastSonarAtMs', 'lastRevealAtMs', 'lastCloakAtMs',
+                           'lastSpeedAtMs', 'lastDecoyAtMs', 'bonusCharges',
+                           'joinedAtMs', 'caughtAtMs', 'caughtByUid',
+                           'memberUids', 'createdAt', 'updatedAt'
+                         ]) &&
+                         existsAfter(/databases/$(database)/documents/lobbies/$(lobbyId)) &&
+                         request.auth.uid in getAfter(/databases/$(database)/documents/lobbies/$(lobbyId)).data.memberUids;
+
+        allow update: if isSignedIn() &&
+                         isValidId(lobbyId) &&
+                         isValidId(playerId) &&
+                         isValidPlayer(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().lobbyId == existing().lobbyId &&
+                         incoming().joinedAtMs == existing().joinedAtMs &&
+                         incoming().createdAt == existing().createdAt && (
+                           // Action 1: Active player updates GPS, mic, abilities, or avatar in waiting lobby.
+                           // SPECTATORS ARE STRICTLY BLOCKED from updating location, mic, or abilities.
+                           (
+                             request.auth.uid == playerId &&
+                             existing().status != 'spectating' &&
+                             existing().role != 'spectator' &&
+                             incoming().role == existing().role &&
+                             incoming().status == existing().status &&
+                             incoming().diff(existing()).affectedKeys().hasOnly([
+                               'displayName', 'avatarColorHex', 'avatarModel',
+                               'avatarHat', 'avatarShirt', 'avatarPants', 'avatarAccessory',
+                               'lat', 'lng', 'isMicMuted', 'isSpeaking',
+                               'cloakedUntilMs', 'speedBoostUntilMs',
+                               'lastSonarAtMs', 'lastRevealAtMs', 'lastCloakAtMs',
+                               'lastSpeedAtMs', 'lastDecoyAtMs', 'bonusCharges',
+                               'updatedAt'
+                             ])
+                           ) ||
+                           // Action 2: Host starts match / assigns roles / resets abilities
+                           (
+                             get(/databases/$(database)/documents/lobbies/$(lobbyId)).data.hostId == request.auth.uid &&
+                             incoming().diff(existing()).affectedKeys().hasOnly([
+                               'role', 'status', 'isMicMuted', 'isSpeaking',
+                               'cloakedUntilMs', 'speedBoostUntilMs',
+                               'lastSonarAtMs', 'lastRevealAtMs', 'lastCloakAtMs',
+                               'lastSpeedAtMs', 'lastDecoyAtMs', 'bonusCharges',
+                               'caughtAtMs', 'caughtByUid', 'memberUids', 'updatedAt'
+                             ])
+                           ) ||
+                           // Action 3: Seeker tags an active hider -> permanent Spectator Mode until match end
+                           (
+                             get(/databases/$(database)/documents/lobbies/$(lobbyId)).data.seekerUid == request.auth.uid &&
+                             get(/databases/$(database)/documents/lobbies/$(lobbyId)).data.status == 'hunting' &&
+                             existing().role == 'hider' &&
+                             existing().status == 'active' &&
+                             incoming().role == 'spectator' &&
+                             incoming().status == 'spectating' &&
+                             incoming().isMicMuted == true &&
+                             incoming().isSpeaking == false &&
+                             incoming().caughtByUid == request.auth.uid &&
+                             incoming().caughtAtMs > 0 &&
+                             incoming().diff(existing()).affectedKeys().hasOnly([
+                               'role', 'status', 'isMicMuted', 'isSpeaking',
+                               'cloakedUntilMs', 'speedBoostUntilMs',
+                               'caughtAtMs', 'caughtByUid', 'updatedAt'
+                             ])
+                           ) ||
+                           // Action 4: Active hider eliminated by out-of-zone timer -> one-way transition to Spectator Mode
+                           (
+                             request.auth.uid == playerId &&
+                             get(/databases/$(database)/documents/lobbies/$(lobbyId)).data.status == 'hunting' &&
+                             existing().role == 'hider' &&
+                             existing().status == 'active' &&
+                             incoming().role == 'spectator' &&
+                             incoming().status == 'spectating' &&
+                             incoming().isMicMuted == true &&
+                             incoming().isSpeaking == false &&
+                             incoming().caughtAtMs > 0 &&
+                             incoming().diff(existing()).affectedKeys().hasOnly([
+                               'role', 'status', 'isMicMuted', 'isSpeaking',
+                               'cloakedUntilMs', 'speedBoostUntilMs',
+                               'caughtAtMs', 'caughtByUid', 'updatedAt'
+                             ])
+                           ) ||
+                           // Action 5: Sync memberUids in waiting state
+                           (
+                             get(/databases/$(database)/documents/lobbies/$(lobbyId)).data.status == 'waiting' &&
+                             request.auth.uid in getAfter(/databases/$(database)/documents/lobbies/$(lobbyId)).data.memberUids &&
+                             incoming().diff(existing()).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                           )
+                         );
+
+        allow delete: if isSignedIn() &&
+                         isValidId(lobbyId) &&
+                         isValidId(playerId) &&
+                         (
+                           request.auth.uid == playerId ||
+                           get(/databases/$(database)/documents/lobbies/$(lobbyId)).data.hostId == request.auth.uid
+                         );
+      }
+
+      match /powerUps/{powerUpId} {
+        allow get: if isSignedIn() && isValidId(lobbyId) && isValidId(powerUpId) && request.auth.uid in existing().memberUids;
+        allow list: if isSignedIn() && request.auth.uid in existing().memberUids;
+
+        allow create: if isSignedIn() &&
+                         isValidId(lobbyId) &&
+                         isValidId(powerUpId) &&
+                         isValidPowerUp(incoming()) &&
+                         incoming().lobbyId == lobbyId &&
+                         incoming().claimedByUid == '' &&
+                         incoming().claimedAtMs == 0 &&
+                         request.auth.uid in incoming().memberUids &&
+                         get(/databases/$(database)/documents/lobbies/$(lobbyId)).data.hostId == request.auth.uid &&
+                         incoming().keys().hasAll([
+                           'lobbyId', 'type', 'lat', 'lng', 'spawnedAtMs',
+                           'claimedByUid', 'claimedAtMs', 'memberUids', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'lobbyId', 'type', 'lat', 'lng', 'spawnedAtMs',
+                           'claimedByUid', 'claimedAtMs', 'memberUids', 'createdAt'
+                         ]);
+
+        allow update: if isSignedIn() &&
+                         isValidId(lobbyId) &&
+                         isValidId(powerUpId) &&
+                         isValidPowerUp(incoming()) &&
+                         existing().claimedByUid == '' &&
+                         incoming().claimedByUid == request.auth.uid &&
+                         incoming().claimedAtMs > 0 &&
+                         request.auth.uid in existing().memberUids &&
+                         isCallerActivePlayer(lobbyId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['claimedByUid', 'claimedAtMs']);
+
+        allow delete: if isSignedIn() &&
+                         isValidId(lobbyId) &&
+                         isValidId(powerUpId) &&
+                         get(/databases/$(database)/documents/lobbies/$(lobbyId)).data.hostId == request.auth.uid;
+      }
+
+      match /decoys/{decoyId} {
+        allow get: if isSignedIn() && isValidId(lobbyId) && isValidId(decoyId) && request.auth.uid in existing().memberUids;
+        allow list: if isSignedIn() && request.auth.uid in existing().memberUids;
+
+        allow create: if isSignedIn() &&
+                         isValidId(lobbyId) &&
+                         isValidId(decoyId) &&
+                         isValidDecoy(incoming()) &&
+                         incoming().ownerUid == request.auth.uid &&
+                         incoming().lobbyId == lobbyId &&
+                         request.auth.uid in incoming().memberUids &&
+                         incoming().keys().hasAll([
+                           'ownerUid', 'lobbyId', 'lat', 'lng', 'expiresAtMs', 'memberUids', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'ownerUid', 'lobbyId', 'lat', 'lng', 'expiresAtMs', 'memberUids', 'createdAt'
+                         ]) &&
+                         get(/databases/$(database)/documents/lobbies/$(lobbyId)/players/$(request.auth.uid)).data.role == 'hider' &&
+                         get(/databases/$(database)/documents/lobbies/$(lobbyId)/players/$(request.auth.uid)).data.status == 'active';
+
+        allow update: if false;
+
+        allow delete: if isSignedIn() &&
+                         isValidId(lobbyId) &&
+                         isValidId(decoyId) &&
+                         (
+                           existing().ownerUid == request.auth.uid ||
+                           get(/databases/$(database)/documents/lobbies/$(lobbyId)).data.hostId == request.auth.uid
+                         );
+      }
+
+      match /voicePackets/{packetId} {
+        allow get: if isSignedIn() && isValidId(lobbyId) && isValidId(packetId) && request.auth.uid in existing().memberUids;
+        allow list: if isSignedIn() && request.auth.uid in existing().memberUids;
+
+        allow create: if isSignedIn() &&
+                         isValidId(lobbyId) &&
+                         isValidId(packetId) &&
+                         isValidVoicePacket(incoming()) &&
+                         incoming().senderUid == request.auth.uid &&
+                         incoming().lobbyId == lobbyId &&
+                         request.auth.uid in incoming().memberUids &&
+                         incoming().keys().hasAll([
+                           'senderUid', 'lobbyId', 'lat', 'lng',
+                           'audioBase64', 'sentAtMs', 'memberUids', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'senderUid', 'lobbyId', 'lat', 'lng',
+                           'audioBase64', 'sentAtMs', 'memberUids', 'createdAt'
+                         ]) &&
+                         isCallerActivePlayer(lobbyId);
+
+        allow update: if false;
+
+        allow delete: if isSignedIn() &&
+                         isValidId(lobbyId) &&
+                         isValidId(packetId) &&
+                         (
+                           existing().senderUid == request.auth.uid ||
+                           get(/databases/$(database)/documents/lobbies/$(lobbyId)).data.hostId == request.auth.uid
+                         );
+      }
+    }
+  }
+}
